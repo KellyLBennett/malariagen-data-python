@@ -899,6 +899,8 @@ class AnophelesDataResource(
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
     ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
@@ -918,6 +920,8 @@ class AnophelesDataResource(
             site_mask=site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -2215,6 +2219,8 @@ class AnophelesDataResource(
         site_mask,
         site_class,
         cohort_size,
+        min_cohort_size,
+        max_cohort_size,
         random_seed,
     ):
         debug = self._log.debug
@@ -2227,6 +2233,8 @@ class AnophelesDataResource(
             site_mask=site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
         gt = ds_snps["call_genotype"]

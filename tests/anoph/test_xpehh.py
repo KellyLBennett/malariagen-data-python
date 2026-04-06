@@ -84,7 +84,7 @@ def test_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
         sample_sets=sample_set,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        window_size=10,
+        window_size=5,
         min_cohort_size=2,
     )
 
@@ -152,7 +152,7 @@ def test_plot_xpehh_gwss_track(fixture, api: AnophelesXpehhAnalysis):
         sample_sets=sample_set,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        window_size=10,
+        window_size=5,
         min_cohort_size=2,
         show=False,
     )
@@ -183,7 +183,7 @@ def test_plot_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
         sample_sets=sample_set,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        window_size=10,
+        window_size=5,
         min_cohort_size=2,
         show=False,
     )

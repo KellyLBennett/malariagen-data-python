@@ -1,4 +1,5 @@
 import warnings
+from collections import OrderedDict
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -75,7 +76,9 @@ class AnophelesSnpData(
             base_params.site_mask, zarr.hierarchy.Group
         ] = dict()
         self._cache_site_annotations: Optional[zarr.hierarchy.Group] = None
-        self._cache_locate_site_class: Dict[Tuple[Any, ...], np.ndarray] = dict()
+        self._cache_locate_site_class: OrderedDict[
+            Tuple[Any, ...], np.ndarray
+        ] = OrderedDict()
 
         # Create the SNP-calls cache as a per-instance lru_cache wrapping the
         # bound method.  Storing it on the instance (rather than using a
@@ -798,6 +801,9 @@ class AnophelesSnpData(
 
         try:
             loc_ann = self._cache_locate_site_class[cache_key]
+            # Promote to most-recently-used so the LRU eviction below
+            # always removes the *least*-recently-used entry.
+            self._cache_locate_site_class.move_to_end(cache_key)
 
         except KeyError as exc:
             # Access site annotations data.
@@ -943,9 +949,10 @@ class AnophelesSnpData(
 
             self._cache_locate_site_class[cache_key] = loc_ann
 
-            # Evict the oldest entry when the cache exceeds its size limit.
-            # Plain dicts preserve insertion order (Python 3.7+), so the first
-            # key is always the oldest.
+            # Evict the least-recently-used entry when the cache exceeds its
+            # size limit.  Because the cache is an OrderedDict and both hits
+            # (move_to_end above) and inserts append to the right, the first
+            # key is always the *least*-recently-used entry.
             while len(self._cache_locate_site_class) > _LOCATE_SITE_CLASS_CACHE_MAXSIZE:
                 oldest = next(iter(self._cache_locate_site_class))
                 del self._cache_locate_site_class[oldest]

@@ -61,15 +61,13 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-@parametrize_with_cases("fixture,api", cases=".")
-def test_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
-    # Set up test parameters.
+def _setup_cohorts(api):
+    """Helper to set up contig, sample_set, and cohort queries."""
     contig = str(np.random.choice(api.contigs))
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_set = str(np.random.choice(all_sample_sets))
     df_samples = api.sample_metadata(sample_sets=sample_set)
 
-    # Need at least 2 samples for two cohorts.
     if len(df_samples) < 2:
         pytest.skip("Not enough samples for two cohorts")
 
@@ -77,14 +75,42 @@ def test_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
     mid = len(sample_ids) // 2
     cohort1_query = f"sample_id in {sample_ids[:mid]}"
     cohort2_query = f"sample_id in {sample_ids[mid:]}"
+    return contig, sample_set, cohort1_query, cohort2_query
 
-    # Run function under test.
+
+def _safe_window_size(api, contig, sample_set, cohort1_query, cohort2_query):
+    """Determine a safe window_size by first running without windowing."""
+    x_raw, _ = api.xpehh_gwss(
+        contig=contig,
+        sample_sets=sample_set,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        window_size=None,
+        min_cohort_size=2,
+    )
+    n_variants = len(x_raw)
+    if n_variants < 2:
+        pytest.skip(f"Only {n_variants} variants available, need at least 2")
+    # Use half the available variants, clamped to [2, n_variants].
+    return max(2, n_variants // 2)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
+    contig, sample_set, cohort1_query, cohort2_query = _setup_cohorts(api)
+
+    # Determine a safe window size from the actual data.
+    window_size = _safe_window_size(
+        api, contig, sample_set, cohort1_query, cohort2_query
+    )
+
+    # Run function under test with windowing.
     x, xpehh = api.xpehh_gwss(
         contig=contig,
         sample_sets=sample_set,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        window_size=5,
+        window_size=window_size,
         min_cohort_size=2,
     )
 
@@ -98,19 +124,7 @@ def test_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_xpehh_gwss_no_window(fixture, api: AnophelesXpehhAnalysis):
-    # Set up test parameters.
-    contig = str(np.random.choice(api.contigs))
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = str(np.random.choice(all_sample_sets))
-    df_samples = api.sample_metadata(sample_sets=sample_set)
-
-    if len(df_samples) < 2:
-        pytest.skip("Not enough samples for two cohorts")
-
-    sample_ids = df_samples["sample_id"].to_list()
-    mid = len(sample_ids) // 2
-    cohort1_query = f"sample_id in {sample_ids[:mid]}"
-    cohort2_query = f"sample_id in {sample_ids[mid:]}"
+    contig, sample_set, cohort1_query, cohort2_query = _setup_cohorts(api)
 
     # Run function under test with no windowing.
     x, xpehh = api.xpehh_gwss(
@@ -132,19 +146,11 @@ def test_xpehh_gwss_no_window(fixture, api: AnophelesXpehhAnalysis):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_xpehh_gwss_track(fixture, api: AnophelesXpehhAnalysis):
-    # Set up test parameters.
-    contig = str(np.random.choice(api.contigs))
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = str(np.random.choice(all_sample_sets))
-    df_samples = api.sample_metadata(sample_sets=sample_set)
+    contig, sample_set, cohort1_query, cohort2_query = _setup_cohorts(api)
 
-    if len(df_samples) < 2:
-        pytest.skip("Not enough samples for two cohorts")
-
-    sample_ids = df_samples["sample_id"].to_list()
-    mid = len(sample_ids) // 2
-    cohort1_query = f"sample_id in {sample_ids[:mid]}"
-    cohort2_query = f"sample_id in {sample_ids[mid:]}"
+    window_size = _safe_window_size(
+        api, contig, sample_set, cohort1_query, cohort2_query
+    )
 
     # Run function under test.
     fig = api.plot_xpehh_gwss_track(
@@ -152,7 +158,7 @@ def test_plot_xpehh_gwss_track(fixture, api: AnophelesXpehhAnalysis):
         sample_sets=sample_set,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        window_size=5,
+        window_size=window_size,
         min_cohort_size=2,
         show=False,
     )
@@ -163,19 +169,11 @@ def test_plot_xpehh_gwss_track(fixture, api: AnophelesXpehhAnalysis):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
-    # Set up test parameters.
-    contig = str(np.random.choice(api.contigs))
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = str(np.random.choice(all_sample_sets))
-    df_samples = api.sample_metadata(sample_sets=sample_set)
+    contig, sample_set, cohort1_query, cohort2_query = _setup_cohorts(api)
 
-    if len(df_samples) < 2:
-        pytest.skip("Not enough samples for two cohorts")
-
-    sample_ids = df_samples["sample_id"].to_list()
-    mid = len(sample_ids) // 2
-    cohort1_query = f"sample_id in {sample_ids[:mid]}"
-    cohort2_query = f"sample_id in {sample_ids[mid:]}"
+    window_size = _safe_window_size(
+        api, contig, sample_set, cohort1_query, cohort2_query
+    )
 
     # Run function under test.
     fig = api.plot_xpehh_gwss(
@@ -183,7 +181,7 @@ def test_plot_xpehh_gwss(fixture, api: AnophelesXpehhAnalysis):
         sample_sets=sample_set,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        window_size=5,
+        window_size=window_size,
         min_cohort_size=2,
         show=False,
     )

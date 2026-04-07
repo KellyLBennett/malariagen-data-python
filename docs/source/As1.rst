@@ -72,14 +72,6 @@ SNP data access
     biallelic_diplotypes
     biallelic_snps_to_plink
 
-Integrative genomics viewer (IGV)
----------------------------------
-.. autosummary::
-    :toctree: generated/
-
-    igv
-    view_alignments
-
 SNP frequency analysis
 ----------------------
 .. autosummary::
@@ -136,7 +128,6 @@ Diplotype clustering
     :toctree: generated/
 
     plot_diplotype_clustering
-    plot_diplotype_clustering_advanced
 
 Fst analysis
 ------------

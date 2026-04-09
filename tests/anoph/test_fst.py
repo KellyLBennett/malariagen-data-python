@@ -166,6 +166,27 @@ def test_fst_gwss_window_size_too_large(fixture, api: AnophelesFstAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_fst_gwss_too_few_snps(fixture, api: AnophelesFstAnalysis):
+    # When min_snps_threshold exceeds available SNPs, a ValueError must be raised.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
+    countries = random.sample(all_countries, 2)
+    cohort1_query = f"country == {countries[0]!r}"
+    cohort2_query = f"country == {countries[1]!r}"
+    with pytest.raises(ValueError, match="Too few SNP sites"):
+        api.fst_gwss(
+            contig=random.choice(api.contigs),
+            sample_sets=all_sample_sets,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            site_mask=random.choice(api.site_mask_ids),
+            window_size=100,
+            min_cohort_size=1,
+            min_snps_threshold=10_000_000,  # far larger than any fixture SNP count (~28k-70k)
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_average_fst(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()

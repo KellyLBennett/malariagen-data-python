@@ -198,7 +198,9 @@ class SnpVcfExporter(
                     missing = (a0 < 0) | (a1 < 0)
 
                     # Build formatted GT strings using NumPy vectorization
-                    gt_formatted = np.empty((gt_chunk.shape[0], n_samples), dtype=object)
+                    gt_formatted = np.empty(
+                        (gt_chunk.shape[0], n_samples), dtype=object
+                    )
                     gt_formatted[missing] = "./."
                     present_idx = ~missing
                     if np.any(present_idx):

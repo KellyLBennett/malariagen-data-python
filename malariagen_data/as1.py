@@ -54,11 +54,11 @@ class As1(AnophelesDataResource):
     Access data from Google Cloud Storage (default):
 
         >>> import malariagen_data
-        >>> adir1 = malariagen_data.As1()
+        >>> as1 = malariagen_data.As1()
 
     Access data downloaded to a local file system:
 
-        >>> adir1 = malariagen_data.As1("/local/path/to/vo_as_release/")
+        >>> as1 = malariagen_data.As1("/local/path/to/vo_as_release/")
 
     Access data from Google Cloud Storage, with caching on the local file system
     in a directory named "gcs_cache":

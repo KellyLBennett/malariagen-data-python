@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 import allel  # type: ignore
 import numpy as np

@@ -1440,7 +1440,15 @@ class AnophelesSnpData(
         with self._dask_progress(desc="Compute SNP allele counts"):
             ac = ac.compute()
 
-        results = dict(ac=ac.values)
+        # Cache variant metadata alongside allele counts so that
+        # snp_allele_counts(return_dataset=True) can reconstruct a
+        # Dataset without a redundant snp_calls() invocation.
+        results = dict(
+            ac=ac.values,
+            variant_position=ds_snps["variant_position"].values,
+            variant_contig=ds_snps["variant_contig"].values,
+            variant_allele=ds_snps["variant_allele"].values,
+        )
 
         return results
 
@@ -1481,7 +1489,9 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.native_chunks,
         return_dataset: base_params.return_dataset = False,
     ) -> Any:
-        name = "snp_allele_counts_v2"
+        # Bumped to v3 to include variant metadata in cached results,
+        # enabling Dataset reconstruction without extra snp_calls().
+        name = "snp_allele_counts_v3"
 
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
@@ -1547,24 +1557,23 @@ class AnophelesSnpData(
         ac = results["ac"]
 
         if return_dataset:
-            ds = self.snp_calls(
-                region=params["region"],
-                sample_sets=params["sample_sets"],
-                sample_indices=params["sample_indices"],
-                site_mask=params["site_mask"],
-                site_class=site_class,
-                cohort_size=cohort_size,
-                min_cohort_size=min_cohort_size,
-                max_cohort_size=max_cohort_size,
-                random_seed=random_seed,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            ds = ds.assign(
-                variant_allele_count=(
-                    ds["variant_allele"].dims,
-                    ac,
-                )
+            # Reconstruct the Dataset from cached arrays — no extra
+            # snp_calls() invocation required.
+            ds = xr.Dataset(
+                coords={
+                    "variant_position": (DIM_VARIANT, results["variant_position"]),
+                    "variant_contig": (DIM_VARIANT, results["variant_contig"]),
+                },
+                data_vars={
+                    "variant_allele": (
+                        (DIM_VARIANT, DIM_ALLELE),
+                        results["variant_allele"],
+                    ),
+                    "variant_allele_count": (
+                        (DIM_VARIANT, DIM_ALLELE),
+                        ac,
+                    ),
+                },
             )
             return ds
 
@@ -1911,7 +1920,9 @@ class AnophelesSnpData(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        ds = self.snp_allele_counts(
+        # Get the full SNP calls dataset (genotypes, sample_id, variant info).
+        # N.B., snp_calls() uses an LRU cache so this is efficient.
+        ds = self.snp_calls(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -1925,9 +1936,33 @@ class AnophelesSnpData(
             random_seed=random_seed,
             inline_array=inline_array,
             chunks=chunks,
-            return_dataset=True,
         )
-        ac = ds["variant_allele_count"].values
+
+        # Get allele counts (uses the results cache, so no redundant
+        # genotype computation even if snp_calls was already called).
+        ac = self.snp_allele_counts(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
+            site_mask=site_mask,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+        # Attach allele counts to the dataset.
+        ds = ds.assign(
+            variant_allele_count=(
+                ds["variant_allele"].dims,
+                ac,
+            )
+        )
 
         # Locate biallelic SNPs.
         loc_bi = allel.AlleleCountsArray(ac).is_biallelic()
@@ -2185,7 +2220,7 @@ class AnophelesSnpData(
         thin_offset: base_params.thin_offset,
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
-    ) -> Dict[str, np.ndarray]:
+    ) -> xr.Dataset:
         # Note: this function uses sample_indices and should not expect a sample_query.
 
         # Access biallelic SNPs.

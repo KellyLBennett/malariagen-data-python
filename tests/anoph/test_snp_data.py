@@ -1158,6 +1158,10 @@ def check_snp_allele_counts(
     assert isinstance(ds_ac, xr.Dataset)
     assert "variant_allele_count" in ds_ac
     assert_array_equal(ds_ac["variant_allele_count"].values, ac)
+    # Verify variant metadata is included.
+    assert "variant_position" in ds_ac.coords
+    assert "variant_contig" in ds_ac.coords
+    assert "variant_allele" in ds_ac
 
 
 @parametrize_with_cases(

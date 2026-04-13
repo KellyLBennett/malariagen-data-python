@@ -1922,6 +1922,7 @@ class AnophelesSnpData(
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
     ) -> xr.Dataset:
+        # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )

@@ -262,12 +262,15 @@ class AnophelesHapClustAnalysis(
             from scipy.spatial.distance import squareform
 
             dist_square = squareform(dist)
+            # Each phased sample contributes 2 haplotypes; create
+            # haplotype-level labels to match the distance matrix.
+            hap_labels = np.repeat(phased_samples, 2)
             ds = xr.Dataset(
                 data_vars={
                     "dist": (("sample_x", "sample_y"), dist_square),
                 },
                 coords={
-                    "sample_id": ("sample_x", phased_samples),
+                    "sample_id": ("sample_x", hap_labels),
                 },
                 attrs={"n_snps": n_snps},
             )

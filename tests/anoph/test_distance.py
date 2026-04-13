@@ -124,17 +124,6 @@ def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric):
     assert n_snps_used >= n_snps
     assert n_snps_used <= n_snps_available
 
-    assert isinstance(dist, np.ndarray)
-    assert isinstance(samples, np.ndarray)
-    assert isinstance(n_snps_used, int)
-
-    assert dist.ndim == 1  # condensed form distance matrix
-    assert dist.shape[0] == int((n_samples * (n_samples - 1)) / 2)
-    assert samples.ndim == 1
-    assert samples.shape[0] == n_samples
-    assert n_snps_used >= n_snps
-    assert n_snps_used <= n_snps_available
-
     ds = api.biallelic_diplotype_pairwise_distances(
         n_snps=n_snps,
         metric=metric,

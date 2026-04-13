@@ -115,6 +115,8 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         chunks: base_params.chunks = base_params.native_chunks,
         return_dataset: base_params.return_dataset = False,
     ) -> Any:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
         name = "biallelic_diplotype_pairwise_distances"
 
         base_params._validate_sample_selection_params(
@@ -155,6 +157,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             max_missing_an=max_missing_an,
         )
 
+        # Try to retrieve results from the cache.
         try:
             results = self.results_cache_get(name=name, params=params)
 
@@ -164,9 +167,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             )
             self.results_cache_set(name=name, params=params, results=results)
 
+        # Unpack results.
         dist: np.ndarray = results["dist"]
         samples: np.ndarray = results["samples"]
-        n_snps_used: int = int(results["n_snps"][()])
+        n_snps_used: int = int(results["n_snps"][()])  # ensure scalar
 
         if return_dataset:
             import xarray as xr

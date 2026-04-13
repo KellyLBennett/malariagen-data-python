@@ -225,8 +225,11 @@ class AnophelesHapClustAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         return_dataset: base_params.return_dataset = False,
     ) -> Any:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
         name = "haplotype_pairwise_distances"
 
+        # Normalize params for consistent hash value.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
         sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
@@ -244,6 +247,7 @@ class AnophelesHapClustAnalysis(
             random_seed=random_seed,
         )
 
+        # Try to retrieve results from the cache.
         try:
             results = self.results_cache_get(name=name, params=params)
 
@@ -253,9 +257,10 @@ class AnophelesHapClustAnalysis(
             )
             self.results_cache_set(name=name, params=params, results=results)
 
+        # Unpack results.
         dist: np.ndarray = results["dist"]
         phased_samples: np.ndarray = results["phased_samples"]
-        n_snps: int = int(results["n_snps"][()])
+        n_snps: int = int(results["n_snps"][()])  # ensure scalar
 
         if return_dataset:
             import xarray as xr

@@ -1435,6 +1435,7 @@ class AnophelesSnpData(
         )
         gt = ds_snps["call_genotype"]
 
+        # Set up and run allele counts computation.
         gt = allel.GenotypeDaskArray(gt.data)
         ac = gt.count_alleles(max_allele=3)
         with self._dask_progress(desc="Compute SNP allele counts"):
@@ -1493,10 +1494,15 @@ class AnophelesSnpData(
         # enabling Dataset reconstruction without extra snp_calls().
         name = "snp_allele_counts_v3"
 
+        # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
             sample_sets_prepped,
             sample_indices_prepped,
@@ -2095,6 +2101,8 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.native_chunks,
         return_dataset: base_params.return_dataset = False,
     ) -> Any:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
         name = "biallelic_diplotypes_v3"
 
         # Check that either sample_query xor sample_indices are provided.
@@ -2152,6 +2160,7 @@ class AnophelesSnpData(
             max_missing_an=max_missing_an,
         )
 
+        # Try to retrieve results from the cache.
         try:
             results = self.results_cache_get(name=name, params=params)
 
@@ -2181,6 +2190,7 @@ class AnophelesSnpData(
             )
             self.results_cache_set(name=name, params=params, results=results)
 
+        # Unpack results.
         gn = results["gn"]
         samples = results["samples"]
 
@@ -2244,10 +2254,13 @@ class AnophelesSnpData(
             chunks=chunks,
         )
 
+        # Load sample IDs.
         samples = ds["sample_id"].values.astype("U")
         variant_position = ds["variant_position"].values
         variant_contig = ds["variant_contig"].values
 
+        # Compute diplotypes as the number of all alleles per genotype call,
+        # with missing calls coded as -127.
         gt = allel.GenotypeDaskArray(ds["call_genotype"].data)
         with self._dask_progress(desc="Compute biallelic diplotypes"):
             gn = gt.to_n_ref().compute()

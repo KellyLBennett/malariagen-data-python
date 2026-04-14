@@ -950,6 +950,12 @@ class AnophelesDataResource(
             inline_array=inline_array,
         )
 
+        if len(x) == 0:
+            raise ValueError(
+                "No iHS values remain after filtering. "
+                "Try relaxing filter_min_maf or min_ehh parameters."
+            )
+
         # determine X axis range
         x_min = x[0]
         x_max = x[-1]

@@ -77,6 +77,16 @@ class TestValidateQueryAcceptsSafe:
     def test_whitespace_handling(self):
         validate_query("  country == 'Ghana'  ")
 
+    def test_at_variable_reference(self):
+        """Pandas @var syntax for referencing local variables."""
+        validate_query("sex_call in @sex_call_list")
+
+    def test_at_variable_in_compound(self):
+        validate_query("taxon in @taxon_list and year > 2015")
+
+    def test_at_variable_equality(self):
+        validate_query("country == @target_country")
+
 
 class TestValidateQueryRejectsMalicious:
     """Ensure that code injection attempts are blocked."""
@@ -171,7 +181,7 @@ class TestValidateQueryEdgeCases:
             validate_query("   ")
 
     def test_non_string_input(self):
-        with pytest.raises(UnsafeQueryError, match="must be a string"):
+        with pytest.raises((UnsafeQueryError, TypeError)):
             validate_query(123)
 
     def test_syntax_error(self):

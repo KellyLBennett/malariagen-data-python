@@ -21,7 +21,13 @@ Forbidden constructs include:
 """
 
 import ast
+import re
 from typing import Optional, Set
+
+# Pattern matching pandas @variable references in query strings.
+# These are not valid Python but are a pandas feature for referencing
+# local/global variables via the `local_dict` or `global_dict` kwargs.
+_AT_VAR_PATTERN = re.compile(r"@([A-Za-z_][A-Za-z0-9_]*)")
 
 
 # AST node types that are safe in query expressions.
@@ -137,8 +143,14 @@ def validate_query(query: str, allowed_names: Optional[Set[str]] = None) -> None
     if not query:
         raise UnsafeQueryError("Query string must not be empty.")
 
+    # Replace pandas @variable references with plain identifiers so the
+    # expression can be parsed as valid Python.  The replaced names are
+    # prefixed with ``_at_`` to avoid collisions with real column names
+    # while remaining dunder-free.
+    query_for_parse = _AT_VAR_PATTERN.sub(r"_at_\1", query)
+
     try:
-        tree = ast.parse(query, mode="eval")
+        tree = ast.parse(query_for_parse, mode="eval")
     except SyntaxError as e:
         raise UnsafeQueryError(f"Query string is not a valid expression: {e}") from e
 

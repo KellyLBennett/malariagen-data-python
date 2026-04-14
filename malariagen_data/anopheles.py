@@ -1135,7 +1135,7 @@ class AnophelesDataResource(
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
         return fig
-    
+
     @_check_types
     @doc(
         summary="""

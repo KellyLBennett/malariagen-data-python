@@ -6,6 +6,7 @@ pandas DataFrame.eval() / DataFrame.query().
 """
 
 import pytest
+from typeguard import TypeCheckError
 
 from malariagen_data.anoph.safe_query import UnsafeQueryError, validate_query
 
@@ -181,7 +182,7 @@ class TestValidateQueryEdgeCases:
             validate_query("   ")
 
     def test_non_string_input(self):
-        with pytest.raises((UnsafeQueryError, TypeError)):
+        with pytest.raises((UnsafeQueryError, TypeError, TypeCheckError)):
             validate_query(123)
 
     def test_syntax_error(self):

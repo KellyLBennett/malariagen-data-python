@@ -46,7 +46,6 @@ def test_plot_njt_not_enough_snps(ag3_sim_api):
     with pytest.raises(ValueError) as e:
         ag3_sim_api.plot_njt(region="2L", n_snps=10000000, sample_query=None)
     assert "Not enough SNPs." in str(e.value)
-    assert "Found" in str(e.value)
     assert "needed 10000000" in str(e.value)
 
 

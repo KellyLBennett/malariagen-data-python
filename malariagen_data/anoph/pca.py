@@ -42,7 +42,6 @@ class AnophelesPca(
             The following additional parameters were also added in version 8.0.0:
             `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
             `random_seed`.
-
         """,
         parameters=dict(
             imputation_method="""

@@ -344,11 +344,11 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
 def test_pca_cohort_downsampling(fixture, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = np.random.sample(all_sample_sets, 2)
     data_params = dict(
-        region=random.choice(api.contigs),
+        region=np.random.choice(api.contigs),
         sample_sets=sample_sets,
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        site_mask=np.random.choice((None,) + api.site_mask_ids),
     )
 
     # Test cohort downsampling.
@@ -417,6 +417,8 @@ def test_pca_cohort_downsampling(fixture, api: AnophelesPca):
             cohort_size=10,
             **data_params,
         )
+
+
 # --- _jitter() determinism unit tests ---
 
 

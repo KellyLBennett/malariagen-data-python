@@ -352,7 +352,7 @@ def test_pca_cohort_downsampling(fixture, api: AnophelesPca):
             [
                 None,
             ]
-            + api.site_mask_ids
+            + list(api.site_mask_ids)
         ),
     )
 

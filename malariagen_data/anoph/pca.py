@@ -41,30 +41,8 @@ class AnophelesPca(
 
             The following additional parameters were also added in version 8.0.0:
             `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
-            `random_seed`.
-
-            .. versionchanged:: 9.0.0
-               The `cohorts` parameter has been added to enable cohort-based
-               downsampling via the `max_cohort_size` parameter.
-        """,
-        returns=("df_pca", "evr"),
-        notes="""
-            This computation may take some time to run, depending on your computing
-            environment. Results of this computation will be cached and re-used if
-            the `results_cache` parameter was set when instantiating the API client.
-        """,
-        examples="""
-            Run a PCA, downsampling to a maximum of 20 samples per country::
-
-                >>> import malariagen_data
-                >>> ag3 = malariagen_data.Ag3()
-                >>> df_pca, evr = ag3.pca(
-                ...     region="3R",
-                ...     n_snps=1000,
-                ...     cohorts="country",
-                ...     max_cohort_size=20,
-                ... )
-        """,
+            `random_seed`.,
+        returns=("df_pca", "evr")
     )
     def pca(
         self,

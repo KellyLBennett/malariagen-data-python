@@ -82,9 +82,6 @@ class AnophelesPca(
             base_params.max_missing_an
         ] = pca_params.max_missing_an_default,
         imputation_method: pca_params.imputation_method = pca_params.imputation_method_default,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         exclude_samples: Optional[base_params.samples] = None,
         fit_exclude_samples: Optional[base_params.samples] = None,
         random_seed: base_params.random_seed = 42,

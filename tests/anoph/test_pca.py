@@ -348,14 +348,7 @@ def test_pca_cohort_downsampling(fixture, api: AnophelesPca):
     data_params = dict(
         region=np.random.choice(api.contigs),
         sample_sets=sample_sets,
-        site_mask=np.random.choice(
-            np.ndarray(
-                [
-                    None,
-                ]
-                + list(api.site_mask_ids)
-            )
-        ),
+        site_mask=np.random.choice(api.site_mask_ids),
     )
 
     # Test cohort downsampling.

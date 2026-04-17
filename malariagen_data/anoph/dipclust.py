@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional, Tuple
 
 import allel  # type: ignore
@@ -8,12 +9,12 @@ import pandas as pd  # type: ignore
 
 from ..util import (
     CacheMiss,
-    check_types,
-    multiallelic_diplotype_pdist,
-    multiallelic_diplotype_mean_sqeuclidean,
-    multiallelic_diplotype_mean_cityblock,
+    _check_types,
+    _multiallelic_diplotype_pdist,
+    _multiallelic_diplotype_mean_sqeuclidean,
+    _multiallelic_diplotype_mean_cityblock,
 )
-from ..plotly_dendrogram import plot_dendrogram
+from ..plotly_dendrogram import _plot_dendrogram, concat_clustering_subplots
 from . import (
     base_params,
     plotly_params,
@@ -22,12 +23,8 @@ from . import (
     dipclust_params,
     cnv_params,
 )
-from .snp_frq import AnophelesSnpFrequencyAnalysis
+from .snp_frq import AnophelesSnpFrequencyAnalysis, AA_CHANGE_QUERY
 from .cnv_frq import AnophelesCnvFrequencyAnalysis
-
-AA_CHANGE_QUERY = (
-    "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
-)
 
 
 class AnophelesDipClustAnalysis(
@@ -42,7 +39,7 @@ class AnophelesDipClustAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary=""""
         Hierarchically cluster diplotypes in region and produce an interactive plot.
@@ -157,7 +154,7 @@ class AnophelesDipClustAnalysis(
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
-            fig, leaf_data = plot_dendrogram(
+            fig, leaf_data = _plot_dendrogram(
                 dist=dist,
                 linkage_method=linkage_method,
                 count_sort=count_sort,
@@ -192,13 +189,11 @@ class AnophelesDipClustAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return {
-                "figure": fig,
-                "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
-                "n_snps": n_snps_used,
-            }
+        return {
+            "figure": fig,
+            "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
+            "n_snps": n_snps_used,
+        }
 
     def diplotype_pairwise_distances(
         self,
@@ -220,12 +215,16 @@ class AnophelesDipClustAnalysis(
 
         # Normalize params for consistent hash value.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         region_prepped = self._prep_region_cache_param(region=region)
+        del region
         params = dict(
             region=region_prepped,
             site_mask=site_mask,
             sample_sets=sample_sets_prepped,
-            sample_query=sample_query,
+            sample_query=sample_query_prepped,
             sample_query_options=sample_query_options,
             site_class=site_class,
             cohort_size=cohort_size,
@@ -265,10 +264,11 @@ class AnophelesDipClustAnalysis(
         chunks,
         inline_array,
     ):
+        metric = None  # To prevent using before assignment (Pylint).
         if distance_metric == "cityblock":
-            metric = multiallelic_diplotype_mean_cityblock
+            metric = _multiallelic_diplotype_mean_cityblock
         elif distance_metric == "euclidean":
-            metric = multiallelic_diplotype_mean_sqeuclidean
+            metric = _multiallelic_diplotype_mean_sqeuclidean
 
         # Load SNP data.
         ds_snps = self.snp_calls(
@@ -298,7 +298,7 @@ class AnophelesDipClustAnalysis(
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):
-            dist = multiallelic_diplotype_pdist(X, metric=metric)
+            dist = _multiallelic_diplotype_pdist(X, metric=metric)
 
         # Extract IDs of samples. Convert to "U" dtype here
         # to allow these to be saved to the results cache.
@@ -503,56 +503,6 @@ class AnophelesDipClustAnalysis(
 
         return snp_trace, n_snps
 
-    def _dipclust_concat_subplots(
-        self,
-        figures,
-        width,
-        height,
-        row_heights,
-        region: base_params.regions,
-        n_snps: int,
-        sample_sets: Optional[base_params.sample_sets],
-        sample_query: Optional[base_params.sample_query],
-    ):
-        from plotly.subplots import make_subplots  # type: ignore
-
-        title_lines = []
-        if sample_sets is not None:
-            title_lines.append(f"sample sets: {sample_sets}")
-        if sample_query is not None:
-            title_lines.append(f"sample query: {sample_query}")
-        title_lines.append(f"genomic region: {region} ({n_snps} SNPs)")
-        title = "<br>".join(title_lines)
-
-        # make subplots
-        fig = make_subplots(
-            rows=len(figures),
-            cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.02,
-            row_heights=row_heights,
-        )
-
-        for i, figure in enumerate(figures):
-            if isinstance(figure, go.Figure):
-                # This is a figure, access the traces within it.
-                for trace in range(len(figure["data"])):
-                    fig.append_trace(figure["data"][trace], row=i + 1, col=1)
-            else:
-                # Assume this is a trace, add directly.
-                fig.append_trace(figure, row=i + 1, col=1)
-
-        fig.update_xaxes(visible=False)
-        fig.update_layout(
-            title=title,
-            width=width,
-            height=height,
-            hovermode="closest",
-            plot_bgcolor="white",
-        )
-
-        return fig
-
     def _insert_dipclust_snp_trace(
         self,
         *,
@@ -589,10 +539,11 @@ class AnophelesDipClustAnalysis(
             figures.append(snp_trace)
             subplot_heights.append(snp_row_height * n_snps_transcript)
         else:
-            print(
-                f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
+            warnings.warn(
+                f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot.",
+                stacklevel=2,
             )
-        return figures, subplot_heights
+        return figures, subplot_heights, n_snps_transcript
 
     @doc(
         summary=""""
@@ -617,7 +568,7 @@ class AnophelesDipClustAnalysis(
         snp_filter_min_maf: float = 0.05,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
         cnv_region: Optional[base_params.regions] = None,
-        cnv_colorscale: plotly_params.color_continuous_scale = cnv_params.colorscale_default,
+        cnv_colorscale: plotly_params.color_continuous_scale = None,
         cnv_max_coverage_variance: cnv_params.max_coverage_variance = 0.2,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -652,10 +603,13 @@ class AnophelesDipClustAnalysis(
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
+        if cnv_colorscale is None:
+            cnv_colorscale = cnv_params.colorscale_default
         if cohort_size and snp_transcript:
             cohort_size = None
-            print(
-                "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None."
+            warnings.warn(
+                "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None.",
+                stacklevel=2,
             )
 
         res = self.plot_diplotype_clustering(
@@ -733,8 +687,13 @@ class AnophelesDipClustAnalysis(
                 figures.append(cnv_trace)
                 subplot_heights.append(cnv_row_height * n_cnv_genes)
 
+        n_snps_transcripts = []
         if isinstance(snp_transcript, str):
-            figures, subplot_heights = self._insert_dipclust_snp_trace(
+            (
+                figures,
+                subplot_heights,
+                n_snps_transcript,
+            ) = self._insert_dipclust_snp_trace(
                 transcript=snp_transcript,
                 figures=figures,
                 subplot_heights=subplot_heights,
@@ -746,12 +705,18 @@ class AnophelesDipClustAnalysis(
                 dendro_sample_id_order=dendro_sample_id_order,
                 snp_filter_min_maf=snp_filter_min_maf,
                 snp_colorscale=snp_colorscale,
+                snp_row_height=snp_row_height,
                 chunks=chunks,
                 inline_array=inline_array,
             )
+            n_snps_transcripts.append(n_snps_transcript)
         elif isinstance(snp_transcript, list):
             for st in snp_transcript:
-                figures, subplot_heights = self._insert_dipclust_snp_trace(
+                (
+                    figures,
+                    subplot_heights,
+                    n_snps_transcript,
+                ) = self._insert_dipclust_snp_trace(
                     transcript=st,
                     figures=figures,
                     subplot_heights=subplot_heights,
@@ -763,14 +728,16 @@ class AnophelesDipClustAnalysis(
                     dendro_sample_id_order=dendro_sample_id_order,
                     snp_filter_min_maf=snp_filter_min_maf,
                     snp_colorscale=snp_colorscale,
+                    snp_row_height=snp_row_height,
                     chunks=chunks,
                     inline_array=inline_array,
                 )
+                n_snps_transcripts.append(n_snps_transcript)
 
         # Calculate total height based on subplot heights, plus a fixed
         # additional component to allow for title, axes etc.
         height = sum(subplot_heights) + 50
-        fig = self._dipclust_concat_subplots(
+        fig = concat_clustering_subplots(
             figures=figures,
             width=width,
             height=height,
@@ -791,8 +758,44 @@ class AnophelesDipClustAnalysis(
             legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
 
+        # add lines to aa plot - looks neater
+        if snp_transcript:
+            n_transcripts = (
+                len(snp_transcript) if isinstance(snp_transcript, list) else 1
+            )
+            for i in range(n_transcripts):
+                tx_idx = len(figures) - n_transcripts + i + 1
+                if n_snps_transcripts[i] > 0:
+                    fig.add_hline(
+                        y=-0.5, line_width=1, line_color="grey", row=tx_idx, col=1
+                    )
+                    for j in range(n_snps_transcripts[i]):
+                        fig.add_hline(
+                            y=j + 0.5,
+                            line_width=1,
+                            line_color="grey",
+                            row=tx_idx,
+                            col=1,
+                        )
+
+                fig.update_xaxes(
+                    showline=True,
+                    linecolor="grey",
+                    linewidth=1,
+                    row=tx_idx,
+                    col=1,
+                    mirror=True,
+                )
+
+                fig.update_yaxes(
+                    showline=True,
+                    linecolor="grey",
+                    linewidth=1,
+                    row=tx_idx,
+                    col=1,
+                    mirror=True,
+                )
+
         if show:
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

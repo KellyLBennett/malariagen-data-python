@@ -77,7 +77,8 @@ def _minimum_spanning_network(dist, max_dist=None):
 def _pairwise_haplotype_distance(h, metric="hamming"):
     import scipy.spatial
 
-    assert metric in ["hamming", "jaccard"]
+    if metric not in ("hamming", "jaccard"):
+        raise ValueError(f"metric must be 'hamming' or 'jaccard', got {metric!r}")
     dist = scipy.spatial.distance.pdist(h.T, metric=metric)
     dist *= h.shape[0]
     dist = scipy.spatial.distance.squareform(dist)
@@ -128,7 +129,7 @@ def _uvw_consensus(h, max_allele):
     return out
 
 
-def median_joining_network(h, max_dist=None, max_allele=1):
+def _median_joining_network(h, max_dist=None, max_allele=1):
     # setup
     h = np.asarray(h)
     orig_n_haplotypes = h.shape[1]
@@ -281,12 +282,6 @@ def _mjn_graph_edges(
                 # add edge from final intermediate node to node j
                 source = f"anon_{i}_{j}_{sep-2}"
                 target = j
-                graph_node = {
-                    "id": source,
-                    "count": 0,
-                    "width": anon_width,
-                }
-                graph_nodes.append(graph_node)
                 graph_edge = {
                     "id": f"edge_{i}_{j}_{sep-1}",
                     "source": source,
@@ -295,7 +290,7 @@ def _mjn_graph_edges(
                 graph_edges.append(graph_edge)
 
 
-def mjn_graph(
+def _mjn_graph(
     ht_distinct,
     ht_distinct_mjn,
     ht_counts,
